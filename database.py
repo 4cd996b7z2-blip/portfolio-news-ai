@@ -56,6 +56,47 @@ def insert_market_data(ticker, company_name, current_price, market_cap, sector):
     conn.commit()
     conn.close()
 
+def add_relevance_columns():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("ALTER TABLE articles ADD COLUMN relevance_score INTEGER")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+    try:
+        cursor.execute("ALTER TABLE articles ADD COLUMN category TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE articles ADD COLUMN reasoning TEXT")
+    except sqlite3.OperationalError:
+        pass
+    conn.commit()
+    conn.close()
+
+def get_unanalyzed_articles():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, ticker, company_name, headline, source
+        FROM articles
+        WHERE relevance_score IS NULL
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def save_analysis(article_id, relevance_score, category, reasoning):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE articles
+        SET relevance_score = ?, category = ?, reasoning = ?
+        WHERE id = ?
+    """, (relevance_score, category, reasoning, article_id))
+    conn.commit()
+    conn.close()
+
 if __name__ == "__main__":
     init_db()
     print("Database initialized.")
